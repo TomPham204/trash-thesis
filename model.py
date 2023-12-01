@@ -8,6 +8,7 @@ from tensorflow.keras import regularizers
 from tensorflow.keras.layers import Dropout, GlobalAveragePooling2D, Dense
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.optimizers import SGD
+from PIL import Image
 
 
 class TrashModel:
@@ -53,8 +54,11 @@ class TrashModel:
 
     def segment_objects(self):
         ret, frame = self.video.read()
+        pil_image = Image.fromarray(frame)
+        image_np = np.array(pil_image)
+
         _, detections = self.detector_model.detectObjectsFromImage(
-            input_image=frame, output_type="array"
+            input_image=image_np, output_type="array"
         )
 
         segmented_objects = []
