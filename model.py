@@ -23,7 +23,7 @@ class TrashModel:
             "metal": 3,
             "paper": 4,
         }
-        self.class_names = ["cardboard", "paper", "fabric", "glass", "metal"]
+        self.class_names_tm = ["cardboard", "paper", "fabric", "glass", "metal"]
 
         # Initialize ObjectDetection from ImageAI for segmenting objects
         self.detector_model = ObjectDetection()
@@ -32,7 +32,8 @@ class TrashModel:
         self.detector_model.loadModel()
 
         # Initialize MobileNetV2 for trash classification
-        self.predictor_model = load_model("keras_Model.h5", compile=False)
+        self.predictor_model = load_model("main_model.h5", compile=False)
+        self.support_model = load_model("weight.h5", compile=False)
 
     def segment_objects(self):
         ret, frame = self.video.read()
@@ -57,16 +58,54 @@ class TrashModel:
     def predict_classes(self, segmented_objects):
         classes = []
         for obj in segmented_objects:
-            cropped_obj = cv2.resize(obj["image"], (224, 224))
-            cropped_obj = (cropped_obj.astype(np.float32) / 127.5) - 1
+            try:
+                cropped_obj = cv2.resize(obj["image"], (224, 224))
+                cropped_obj = (cropped_obj.astype(np.float32) / 127.5) - 1
 
-            predictions = self.predictor_model.predict(
-                np.expand_dims(cropped_obj, axis=0)
-            )
+                predictions = self.predictor_model.predict(
+                    np.expand_dims(cropped_obj, axis=0)
+                )
+                print("here1", predictions)
 
-            # Map predictions to class labels
-            predicted_class_index = np.argmax(predictions)
-            predicted_class_label = self.class_names[predicted_class_index]
+                # compare max and second max to see if the prediction is confident enough
+                tmp = predictions[0].argsort()[::-1]
+                if predictions[0][tmp[0]] - predictions[0][tmp[1]] < 0.2:
+                    predictions_sp = self.support_model.predict(
+                        np.expand_dims(cropped_obj, axis=0)
+                    )
 
-            classes.append(predicted_class_label)
+                    # Reorder predictions_sp to align with the order of     predictions
+                    reordered_predictions_sp = [0] * len(predictions[0])
+                    original_order = np.argsort(tmp)
+                    sp_order = [1, 5, 2, 3, 4]  # Order of predictions_sp
+
+                    for idx, label_idx in enumerate(original_order):
+                        reordered_predictions_sp[label_idx] = predictions_sp[0][
+                            sp_order[idx] - 1
+                        ]
+
+                    # Perform weighted average
+                    weighted_predictions = (
+                        0.65 * predictions + 0.35 * np.array([reordered_predictions_sp])
+                    ) / 2
+
+                    # Map predictions to class labels
+                    predicted_class_index = np.argmax(weighted_predictions)
+                    predicted_class_label = self.class_names_tm[predicted_class_index]
+                    print(predicted_class_label)
+
+                    classes.append(predicted_class_label)
+                else:
+                    # Map predictions to class labels
+                    predicted_class_index = np.argmax(predictions)
+                    predicted_class_label = self.class_names_tm[predicted_class_index]
+                    print(predicted_class_label)
+
+                    classes.append(predicted_class_label)
+            except ValueError as error:
+                print("Value error: ", error)
+                continue
+            except TypeError as error:
+                print("Type error: ", error)
+                continue
         return classes
