@@ -35,25 +35,52 @@ class TrashModel:
         self.predictor_model = load_model("main_model.h5", compile=False)
         self.support_model = load_model("weight.h5", compile=False)
 
-    def segment_objects(self):
-        ret, frame = self.video.read()
-        pil_image = Image.fromarray(frame)
-        image_np = np.array(pil_image)
+    def segment_objects(self, source):
+        if source == "live_feed":
+            ret, frame = self.video.read()
+            pil_image = Image.fromarray(frame)
+            image_np = np.array(pil_image)
 
-        _, detections = self.detector_model.detectObjectsFromImage(
-            input_image=image_np, output_type="array"
-        )
+            _, detections = self.detector_model.detectObjectsFromImage(
+                input_image=image_np, output_type="array"
+            )
 
-        segmented_objects = []
+            segmented_objects = []
 
-        if len(detections) > 0:
-            for obj in detections:
-                [x1, y1, x2, y2] = obj["box_points"]
-                cropped_obj = frame[y1:y2, x1:x2]
+            if len(detections) > 0:
+                for obj in detections:
+                    [x1, y1, x2, y2] = obj["box_points"]
+                    cropped_obj = frame[y1:y2, x1:x2]
+                    segmented_objects.append(
+                        {"image": cropped_obj, "class": "To be predicted"}
+                    )
+            else:
                 segmented_objects.append(
-                    {"image": cropped_obj, "class": "To be predicted"}
+                    {"image": frame, "class": "To be predicted"}
                 )
-        return segmented_objects
+            return segmented_objects
+        else:
+            pil_image = Image.open(source)
+            image_np = np.array(pil_image)
+
+            _, detections = self.detector_model.detectObjectsFromImage(
+                input_image=image_np, output_type="array"
+            )
+
+            segmented_objects = []
+
+            if len(detections) > 0:
+                for obj in detections:
+                    [x1, y1, x2, y2] = obj["box_points"]
+                    cropped_obj = image_np[y1:y2, x1:x2]
+                    segmented_objects.append(
+                        {"image": cropped_obj, "class": "To be predicted"}
+                    )
+            else:
+                segmented_objects.append(
+                    {"image": image_np, "class": "To be predicted"}
+                )
+            return segmented_objects
 
     def predict_classes(self, segmented_objects):
         classes = []

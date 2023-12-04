@@ -1,5 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+from tkinter import filedialog
 import cv2
 
 
@@ -17,21 +18,81 @@ class TrashClassificationUI:
         self.left_frame = tk.Frame(self.container)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
 
+        self.right_frame = tk.Frame(self.container)
+        self.right_frame.pack(side=tk.RIGHT, fill=tk.Y)
+
         self.top_left_frame = tk.Frame(self.left_frame, width=300, height=300)
         self.bottom_left_frame = tk.Frame(self.left_frame, width=300, height=300)
-        self.right_frame = tk.Frame(self.container, width=300, height=600)
+
+        self.top_right_frame = tk.Frame(self.right_frame, width=300, height=100)
+        self.bottom_right_frame = tk.Frame(self.right_frame, width=300, height=500)
 
         # camera preview is updated constantly, while segmented objects and classes are updated every 5 seconds
         self.top_left_frame.pack(padx=10, pady=10)
         self.bottom_left_frame.pack(padx=10, pady=10)
-        self.right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
-        
+        self.top_right_frame.pack(padx=10, pady=10)
+        self.bottom_right_frame.pack(padx=10, pady=10)
+
+        # radio button to choose source
+        self.source_var = tk.StringVar()
+        self.source_var.set("live_feed")
+        self.file_path = "live_feed"
+
+        live_feed_radio = tk.Radiobutton(
+            self.top_right_frame,
+            text="Live Feed",
+            variable=self.source_var,
+            value="live_feed",
+            command=self.update_camera_preview,
+        )
+        live_feed_radio.pack(anchor=tk.W)
+        use_image_radio = tk.Radiobutton(
+            self.top_right_frame,
+            text="Use Image",
+            variable=self.source_var,
+            value="use_image",
+            command=self.update_browse_image_preview,
+        )
+        use_image_radio.pack(anchor=tk.W)
+
+    def getCurrentSource(self):
+        if self.source_var.get() == "live_feed":
+            return "live_feed"
+        else:
+            return self.file_path
 
     def stopUI(self):
         self.app_closing = False
         cv2.destroyAllWindows()
 
+    def update_source_preview(self):
+        if self.source_var.get() == "live_feed":
+            self.update_camera_preview()
+        else:
+            self.update_browse_image_preview()
+
+    def update_browse_image_preview(self):
+        # Clear the top_left_frame before updating with new images
+        for widget in self.top_left_frame.winfo_children():
+            widget.destroy()
+
+        # Allow the user to select an image file
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            self.source_var.set("use_image")
+            self.file_path = file_path
+            # Display the chosen image in the top-left frame
+            img = Image.open(file_path)
+            img.thumbnail((300, 300))
+            img = ImageTk.PhotoImage(image=img)
+
+            self.top_left_frame.label = tk.Label(self.top_left_frame, image=img)
+            self.top_left_frame.label.config(image=img)
+            self.top_left_frame.label.img = img
+            self.top_left_frame.label.pack()
+
     def update_camera_preview(self):
+        self.source_var.set("live_feed")
         ret, frame = self.video.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -39,14 +100,11 @@ class TrashClassificationUI:
             img.thumbnail((300, 300))
             img = ImageTk.PhotoImage(image=img)
 
-            if hasattr(self.top_left_frame, "label"):
-                self.top_left_frame.label.config(image=img)
-                self.top_left_frame.label.img = img
-            else:
+            if not hasattr(self.top_left_frame, "label"):
                 self.top_left_frame.label = tk.Label(self.top_left_frame, image=img)
-                self.top_left_frame.label.img = img
-                self.top_left_frame.label.config(image=img)
-                self.top_left_frame.label.pack()
+            self.top_left_frame.label.config(image=img)
+            self.top_left_frame.label.img = img
+            self.top_left_frame.label.pack()
 
             if not self.app_closing:
                 self.top_left_frame.label.after(40, self.update_camera_preview)
@@ -68,10 +126,10 @@ class TrashClassificationUI:
 
     def update_classes_list_preview(self, list_of_classes):
         # Clear the right_frame before updating with new classes
-        for widget in self.right_frame.winfo_children():
+        for widget in self.bottom_right_frame.winfo_children():
             widget.destroy()
 
         # Display the classes in the right_frame
         for idx, obj_class in enumerate(list_of_classes):
-            label = tk.Label(self.right_frame, text=obj_class)
+            label = tk.Label(self.bottom_right_frame, text=obj_class)
             label.grid(row=idx, column=0)

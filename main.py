@@ -6,7 +6,9 @@ import threading
 
 
 def process_camera_frame(root, trash_ui, trash_model):
-    segmented_objects = trash_model.segment_objects()
+    source = trash_ui.getCurrentSource()
+    print("current source: ", source)
+    segmented_objects = trash_model.segment_objects(source)
     trash_ui.update_segmented_objects_preview(segmented_objects)
 
     classes = trash_model.predict_classes(segmented_objects)
@@ -20,7 +22,7 @@ def main():
     trash_ui = TrashClassificationUI(root, video)
     trash_model = TrashModel(video)
 
-    ui_thread = threading.Thread(target=trash_ui.update_camera_preview, daemon=True)
+    ui_thread = threading.Thread(target=trash_ui.update_source_preview, daemon=True)
     ui_thread.start()
 
     process_frame_thread = threading.Thread(
