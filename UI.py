@@ -4,7 +4,14 @@ from tkinter import filedialog
 import cv2
 
 
-class TrashClassificationUI:
+class TrashUI:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, root, video):
         self.root = root
         self.root.title("Trash Classification")
@@ -55,6 +62,12 @@ class TrashClassificationUI:
         )
         use_image_radio.pack(anchor=tk.W)
 
+    @classmethod
+    def getInstance(cls, root, video):
+        if not cls._instance:
+            cls._instance = TrashUI(root, video)
+        return cls._instance
+
     def getCurrentSource(self):
         if self.source_var.get() == "live_feed":
             return "live_feed"
@@ -72,16 +85,15 @@ class TrashClassificationUI:
             self.update_browse_image_preview()
 
     def update_browse_image_preview(self):
-        # Clear the top_left_frame before updating with new images
         for widget in self.top_left_frame.winfo_children():
             widget.destroy()
 
-        # Allow the user to select an image file
         file_path = filedialog.askopenfilename()
+
         if file_path:
             self.source_var.set("use_image")
             self.file_path = file_path
-            # Display the chosen image in the top-left frame
+
             img = Image.open(file_path)
             img.thumbnail((300, 300))
             img = ImageTk.PhotoImage(image=img)
@@ -110,11 +122,9 @@ class TrashClassificationUI:
                 self.top_left_frame.label.after(40, self.update_camera_preview)
 
     def update_segmented_objects_preview(self, list_of_objects):
-        # Clear the bottom_left_frame before updating with new images
         for widget in self.bottom_left_frame.winfo_children():
             widget.destroy()
 
-        # Display the segmented objects in the bottom_left_frame
         for idx, obj in enumerate(list_of_objects):
             obj_img = obj["image"]
             obj_img = cv2.resize(obj_img, (60, 60))
@@ -125,11 +135,9 @@ class TrashClassificationUI:
             label.grid(row=0, column=idx)
 
     def update_classes_list_preview(self, list_of_classes):
-        # Clear the right_frame before updating with new classes
         for widget in self.bottom_right_frame.winfo_children():
             widget.destroy()
 
-        # Display the classes in the right_frame
         for idx, obj_class in enumerate(list_of_classes):
             label = tk.Label(self.bottom_right_frame, text=obj_class)
             label.grid(row=idx, column=0)

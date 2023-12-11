@@ -1,25 +1,27 @@
 import tkinter as tk
 import cv2
-from UI import TrashClassificationUI
+from UI import TrashUI
 from model import TrashModel
 import threading
 
 
-def process_camera_frame(root, trash_ui, trash_model):
-    source = trash_ui.getCurrentSource()
-    print("current source: ", source)
-    segmented_objects = trash_model.segment_objects(source)
-    trash_ui.update_segmented_objects_preview(segmented_objects)
+def process_camera_frame(root, trash_model, video):
+    while True:
+        trash_ui = TrashUI.getInstance(root, video)
+        source = trash_ui.getCurrentSource()
+        segmented_objects = trash_model.segment_objects(source)
 
-    classes = trash_model.predict_classes(segmented_objects)
-    trash_ui.update_classes_list_preview(classes)
-    root.after(5000, process_camera_frame, root, trash_ui, trash_model)
+        trash_ui.update_segmented_objects_preview(segmented_objects)
+        classes = trash_model.predict_classes(segmented_objects)
+        trash_ui.update_classes_list_preview(classes)
+
+        threading.Event().wait(5)
 
 
 def main():
     root = tk.Tk()
     video = cv2.VideoCapture(0)
-    trash_ui = TrashClassificationUI(root, video)
+    trash_ui = TrashUI.getInstance(root, video)
     trash_model = TrashModel(video)
 
     ui_thread = threading.Thread(target=trash_ui.update_source_preview, daemon=True)
@@ -27,7 +29,7 @@ def main():
 
     process_frame_thread = threading.Thread(
         target=process_camera_frame,
-        args=(root, trash_ui, trash_model),
+        args=(root, trash_model, video),
         daemon=True,
     )
     process_frame_thread.start()
