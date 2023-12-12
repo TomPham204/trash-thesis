@@ -1,10 +1,7 @@
 import numpy as np
 import cv2
 import os
-
-# from imageai.Detection import ObjectDetection
 from ultralytics import YOLO
-import tensorflow as tf
 from keras.models import load_model
 from PIL import Image
 
@@ -30,66 +27,52 @@ class TrashModel:
         self.support_model = load_model("support.h5", compile=False)
 
     def segment_objects(self, source):
+        segmented_objects = []
+        pil_image = None
+
         if source == "live_feed":
-            try:
-                ret, frame = self.video.read()
-                pil_image = Image.fromarray(frame)
-                image_np = np.array(pil_image)
-
-                # _, detections = self.detector_model.detectObjectsFromImage(
-                #     input_image=image_np, output_type="array"
-                # )
-
-                detections = self.detector_model(image_np)
-                segmented_objects = []
-
-                if len(detections) > 0:
-                    for obj in detections:
-                        x1 = int(obj.boxes.xyxy[0][0])
-                        y1 = int(obj.boxes.xyxy[0][1])
-                        x2 = int(obj.boxes.xyxy[0][2])
-                        y2 = int(obj.boxes.xyxy[0][3])
-                        # [x1, y1, x2, y2] = obj["box_points"]
-                        # cropped_obj = frame[y1:y2, x1:x2]
-
-                        if image_np.shape[2] == 3:
-                            cropped_obj = image_np[y1:y2, x1:x2]
-                            segmented_objects.append(
-                                {"image": cropped_obj, "class": ""}
-                            )
-                        else:
-                            cropped_obj = image_np[x1:x2, y1:y2]
-                            segmented_objects.append(
-                                {"image": cropped_obj, "class": ""}
-                            )
-                else:
-                    segmented_objects.append({"image": frame, "class": ""})
-                return segmented_objects
-            except AttributeError as error:
-                print(error)
-                pass
+            ret, frame = self.video.read()
+            pil_image = Image.fromarray(frame)
         else:
             pil_image = Image.open(source)
+
+        try:
             image_np = np.array(pil_image)
-
-            _, detections = self.detector_model.detectObjectsFromImage(
-                input_image=image_np, output_type="array"
-            )
-
-            segmented_objects = []
+            detections = self.detector_model(image_np)
 
             if len(detections) > 0:
                 for obj in detections:
-                    [x1, y1, x2, y2] = obj["box_points"]
-                    cropped_obj = image_np[y1:y2, x1:x2]
-                    segmented_objects.append(
-                        {"image": cropped_obj, "class": "To be predicted"}
-                    )
+                    x1 = int(obj.boxes.xyxy[0][0])
+                    y1 = int(obj.boxes.xyxy[0][1])
+                    x2 = int(obj.boxes.xyxy[0][2])
+                    y2 = int(obj.boxes.xyxy[0][3])
+
+                    cropped_obj = None
+
+                    if image_np.shape[2] == 3:
+                        cropped_obj = image_np[y1:y2, x1:x2]
+                    else:
+                        cropped_obj = image_np[x1:x2, y1:y2]
+
+                    segmented_objects.append({"image": cropped_obj, "class": ""})
+
             else:
-                segmented_objects.append(
-                    {"image": image_np, "class": "To be predicted"}
-                )
-            return segmented_objects
+                segmented_objects.append({"image": frame, "class": ""})
+
+        except AttributeError as error:
+            print("AttributeError", error)
+            pass
+        except ValueError as error:
+            print("ValueError", error)
+            pass
+        except TypeError as error:
+            print("TypeError", error)
+            pass
+        except IndexError as error:
+            print("IndexError", error)
+            pass
+
+        return segmented_objects
 
     def predict_classes(self, segmented_objects):
         classes = []
