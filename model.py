@@ -14,15 +14,8 @@ class TrashModel:
         self.sp_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
         self.mn_class_indices = ["cardboard", "paper", "fabric", "glass", "metal"]
 
-        # Initialize ObjectDetection from ImageAI for segmenting objects
-        # self.detector_model = ObjectDetection()
-        # self.detector_model.setModelTypeAsRetinaNet()
-        # self.detector_model.setModelPath(os.path.join(self.dir, "retina.pth"))
-        # self.detector_model.loadModel()
-
         self.detector_model = YOLO("yolov8m-seg.pt")
 
-        # Initialize MobileNetV2 for trash classification
         self.predictor_model = load_model("main.h5", compile=False)
         self.support_model = load_model("support.h5", compile=False)
 
@@ -86,39 +79,33 @@ class TrashModel:
                 )
 
                 predictions = list(predictions.tolist())[0]
+                print(predictions)
 
                 # Check if the prediction is confident enough
                 tmp1 = sorted(predictions)
                 first_max = tmp1[-1]
                 second_max = tmp1[-2]
 
-                if first_max - second_max < 0.15 * second_max:
+                if first_max - second_max < 0.1 * second_max:  # 8%
                     print("Using support model, ", tmp1)
                     predictions_sp = self.support_model.predict(
                         np.expand_dims(cropped_obj, axis=0)
                     )
                     predictions_sp = list(predictions_sp.tolist())[0]
 
-                    # Check which model is more confident
-                    tmp2 = sorted(predictions_sp)
-                    first_max_sp = tmp2[-1]
-                    second_max_sp = tmp2[-2]
+                    R1 = max(predictions) // min(predictions)
+                    R2 = max(predictions_sp) // min(predictions_sp)
 
                     [c, f, g, m, p] = predictions_sp
                     reordered_predictions_sp = [c, p, f, g, m]
 
                     weighted_predictions = []
 
-                    if first_max_sp - second_max_sp < first_max - second_max:
-                        for i in range(5):
-                            weighted_predictions.append(
-                                0.7 * predictions[i] + 0.3 * reordered_predictions_sp[i]
-                            )
-                    else:
-                        for i in range(5):
-                            weighted_predictions.append(
-                                0.3 * predictions[i] + 0.7 * reordered_predictions_sp[i]
-                            )
+                    for i in range(5):
+                        weighted_predictions.append(
+                            (R1 * 100 // (R1 + R2)) * predictions[i]
+                            + (R2 * 100 // (R1 + R2)) * reordered_predictions_sp[i]
+                        )
 
                     print("Main predictions: ", predictions)
                     print("Support predictions: ", reordered_predictions_sp)
@@ -136,6 +123,8 @@ class TrashModel:
                     predicted_class_label = self.mn_class_indices[predicted_class_index]
                     obj["class"] = predicted_class_label
                     classes.append(predicted_class_label)
+
+                print(predicted_class_label)
 
             except ValueError as error:
                 print("Value error: ", error)
