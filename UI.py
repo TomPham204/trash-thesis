@@ -124,6 +124,9 @@ class TrashUI:
     def update_segmented_objects_preview(self, list_of_objects):
         for widget in self.bottom_left_frame.winfo_children():
             widget.destroy()
+        
+        if len(list_of_objects) == 0:
+            return
 
         for idx, obj in enumerate(list_of_objects):
             obj_img = obj["image"]

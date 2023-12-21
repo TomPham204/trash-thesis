@@ -15,7 +15,7 @@ def process_camera_frame(root, trash_model, video):
         classes = trash_model.predict_classes(segmented_objects)
         trash_ui.update_classes_list_preview(classes)
 
-        threading.Event().wait(5)
+        threading.Event().wait(3)
 
 
 def main():

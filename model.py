@@ -12,9 +12,9 @@ class TrashModel:
         self.dir = str(os.path.dirname(os.path.abspath(__file__)))
 
         self.sp_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
-        self.mn_class_indices = ["cardboard", "paper", "fabric", "glass", "metal"]
+        self.mn_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
 
-        self.detector_model = YOLO("yolov8m-seg.pt")
+        self.detector_model = YOLO("yolov8l-seg.pt")
 
         self.predictor_model = load_model("main.h5", compile=False)
         self.support_model = load_model("support.h5", compile=False)
@@ -33,25 +33,21 @@ class TrashModel:
             image_np = np.array(pil_image)
             detections = self.detector_model(image_np)
 
-            if len(detections) > 0:
+            if len(detections[0].boxes.xyxy) > 0:
                 for obj in detections:
                     x1 = int(obj.boxes.xyxy[0][0])
                     y1 = int(obj.boxes.xyxy[0][1])
                     x2 = int(obj.boxes.xyxy[0][2])
                     y2 = int(obj.boxes.xyxy[0][3])
-
                     cropped_obj = None
-
                     if image_np.shape[2] == 3:
                         cropped_obj = image_np[y1:y2, x1:x2]
                     else:
                         cropped_obj = image_np[x1:x2, y1:y2]
-
                     segmented_objects.append({"image": cropped_obj, "class": ""})
-
             else:
+                print("No objects detected")
                 segmented_objects.append({"image": frame, "class": ""})
-
         except AttributeError as error:
             print("AttributeError", error)
             pass
@@ -71,11 +67,10 @@ class TrashModel:
         classes = []
         for obj in segmented_objects:
             try:
-                cropped_obj = cv2.resize(obj["image"], (224, 224))
-                cropped_obj = (cropped_obj.astype(np.float32) / 127.5) - 1
+                cropped_obj = cv2.resize(obj["image"], (224, 224)).astype(np.float32)
 
                 predictions = self.predictor_model.predict(
-                    np.expand_dims(cropped_obj, axis=0)
+                    np.expand_dims(cropped_obj / 255, axis=0)
                 )
 
                 predictions = list(predictions.tolist())[0]
@@ -96,8 +91,9 @@ class TrashModel:
                     R1 = max(predictions) // min(predictions)
                     R2 = max(predictions_sp) // min(predictions_sp)
 
-                    [c, f, g, m, p] = predictions_sp
-                    reordered_predictions_sp = [c, p, f, g, m]
+                    # [c, f, g, m, p] = predictions_sp
+                    # reordered_predictions_sp = [c, p, f, g, m]
+                    reordered_predictions_sp = predictions_sp
 
                     weighted_predictions = []
 
