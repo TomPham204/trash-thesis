@@ -47,7 +47,7 @@ class TrashModel:
                     segmented_objects.append({"image": cropped_obj, "class": ""})
             else:
                 print("No objects detected")
-                segmented_objects.append({"image": frame, "class": ""})
+                segmented_objects.append({"image": image_np, "class": ""})
         except AttributeError as error:
             print("AttributeError", error)
             pass
@@ -70,11 +70,11 @@ class TrashModel:
                 cropped_obj = cv2.resize(obj["image"], (224, 224)).astype(np.float32)
 
                 predictions = self.predictor_model.predict(
-                    np.expand_dims(cropped_obj / 255, axis=0)
+                    np.expand_dims(cropped_obj, axis=0)
                 )
 
                 predictions = list(predictions.tolist())[0]
-                print(predictions)
+                # print(predictions)
 
                 # Check if the prediction is confident enough
                 tmp1 = sorted(predictions)

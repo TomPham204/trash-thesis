@@ -9,13 +9,17 @@ def process_camera_frame(root, trash_model, video):
     while True:
         trash_ui = TrashUI.getInstance(root, video)
         source = trash_ui.getCurrentSource()
+
         segmented_objects = trash_model.segment_objects(source)
 
         trash_ui.update_segmented_objects_preview(segmented_objects)
         classes = trash_model.predict_classes(segmented_objects)
         trash_ui.update_classes_list_preview(classes)
 
-        threading.Event().wait(3)
+        if source == "live_feed":
+            threading.Event().wait(2)
+        else:
+            threading.Event().wait(0.2)
 
 
 def main():
