@@ -14,7 +14,7 @@ class TrashModel:
         self.sp_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
         self.mn_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
 
-        self.detector_model = YOLO("yolov8l-seg.pt")
+        self.detector_model = YOLO("yolov8m-seg.pt")
 
         self.predictor_model = load_model("main.h5", compile=False)
         self.support_model = load_model("support.h5", compile=False)
@@ -61,6 +61,7 @@ class TrashModel:
             print("IndexError", error)
             pass
 
+        print("Segmented objects: ", len(segmented_objects))
         return segmented_objects
 
     def predict_classes(self, segmented_objects):
