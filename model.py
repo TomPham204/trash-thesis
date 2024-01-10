@@ -31,15 +31,25 @@ class TrashModel:
 
         try:
             image_np = np.array(pil_image)
-            detections = self.detector_model(image_np)
+            result = self.detector_model(image_np)[0]
+            num_of_objects = len(result.boxes)
+            print("\nObjects: ", num_of_objects)
 
-            if len(detections[0].boxes.xyxy) > 0:
-                for obj in detections:
-                    x1 = int(obj.boxes.xyxy[0][0])
-                    y1 = int(obj.boxes.xyxy[0][1])
-                    x2 = int(obj.boxes.xyxy[0][2])
-                    y2 = int(obj.boxes.xyxy[0][3])
+            if num_of_objects > 0:
+                for i in range(0, num_of_objects):
+                    print(result.boxes.xyxy)
                     cropped_obj = None
+
+                    x1 = result.boxes.xyxy[i][0]
+                    y1 = result.boxes.xyxy[i][1]
+                    x2 = result.boxes.xyxy[i][2]
+                    y2 = result.boxes.xyxy[i][3]
+
+                    x1 = int(np.array(x1))
+                    y1 = int(np.array(y1))
+                    x2 = int(np.array(x2))
+                    y2 = int(np.array(y2))
+
                     if image_np.shape[2] == 3:
                         cropped_obj = image_np[y1:y2, x1:x2]
                     else:
@@ -61,7 +71,6 @@ class TrashModel:
             print("IndexError", error)
             pass
 
-        print("Segmented objects: ", len(segmented_objects))
         return segmented_objects
 
     def predict_classes(self, segmented_objects):
@@ -120,8 +129,6 @@ class TrashModel:
                     predicted_class_label = self.mn_class_indices[predicted_class_index]
                     obj["class"] = predicted_class_label
                     classes.append(predicted_class_label)
-
-                print(predicted_class_label)
 
             except ValueError as error:
                 print("Value error: ", error)
