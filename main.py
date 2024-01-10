@@ -24,7 +24,8 @@ def process_camera_frame(root, trash_model, video):
 
 def main():
     root = tk.Tk()
-    root.minsize(720, 480)
+    root.minsize(480, 360)
+    root.maxsize(1280, 720)
     video = cv2.VideoCapture(0)
     trash_ui = TrashUI.getInstance(root, video)
     trash_model = TrashModel(video)

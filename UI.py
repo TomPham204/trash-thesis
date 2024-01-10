@@ -14,13 +14,21 @@ class TrashUI:
 
     def __init__(self, root, video):
         self.root = root
-        self.root.title("Trash Classification")
+        self.root.title("Trash Classification Demo by Cong Tuan")
         self.root.configure(background="black")
         self.app_closing = False
         self.video = video
 
         self.container = tk.Frame(self.root)
         self.container.pack(fill=tk.BOTH, expand=True)
+
+        self.top_frame = tk.Frame(self.container)
+        self.top_frame.pack(side=tk.TOP, fill=tk.X)
+        title = tk.Label(
+            self.top_frame,
+            text="A MODEL FOR CLASSIFICATION OF WASTE BASED ON DEEP LEARNING AND IMAGE PROCESSING TECHNIQUES by Pham Cong Tuan ITITIU19060",
+        )
+        title.pack()
 
         self.left_frame = tk.Frame(self.container)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -124,10 +132,11 @@ class TrashUI:
     def update_segmented_objects_preview(self, list_of_objects):
         for widget in self.bottom_left_frame.winfo_children():
             widget.destroy()
-        
+
         if len(list_of_objects) == 0:
             return
 
+        max_columns = 5
         for idx, obj in enumerate(list_of_objects):
             obj_img = obj["image"]
             obj_img = cv2.resize(obj_img, (60, 60))
@@ -135,12 +144,15 @@ class TrashUI:
             img = ImageTk.PhotoImage(image=img)
             label = tk.Label(self.bottom_left_frame, image=img)
             label.img = img
-            label.grid(row=0, column=idx)
+
+            row = idx // max_columns
+            column = idx % max_columns
+            label.grid(row=row, column=column)
 
     def update_classes_list_preview(self, list_of_classes):
         for widget in self.bottom_right_frame.winfo_children():
             widget.destroy()
 
-        for idx, obj_class in enumerate(list_of_classes):
+        for idx, obj_class in enumerate(list(set(list_of_classes))):
             label = tk.Label(self.bottom_right_frame, text=obj_class)
             label.grid(row=idx, column=0)

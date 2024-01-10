@@ -37,7 +37,6 @@ class TrashModel:
 
             if num_of_objects > 0:
                 for i in range(0, num_of_objects):
-                    print(result.boxes.xyxy)
                     cropped_obj = None
 
                     x1 = result.boxes.xyxy[i][0]
