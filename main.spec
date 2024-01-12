@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('main.h5', '.'), ('support.h5', '.'), ('yolov8l-seg.pt', '.'), ('C:/Users/thect/anaconda3/envs/thesis/Lib/site-packages/ultralytics/cfg/default.yaml', './ultralytics/cfg')],
+    datas=[('main.h5', '.'), ('support.h5', '.'), ('yolov8m-seg.pt', '.'), ('C:/Users/thect/anaconda3/envs/thesis/Lib/site-packages/ultralytics/cfg/default.yaml', './ultralytics/cfg')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
