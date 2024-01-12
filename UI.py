@@ -26,9 +26,11 @@ class TrashUI:
         self.top_frame.pack(side=tk.TOP, fill=tk.X)
         title = tk.Label(
             self.top_frame,
-            text="A MODEL FOR CLASSIFICATION OF WASTE BASED ON DEEP LEARNING AND IMAGE PROCESSING TECHNIQUES by Pham Cong Tuan ITITIU19060",
+            text="A model for classification of waste based on deep learning and image processing techniques",
         )
         title.pack()
+        author = tk.Label(self.top_frame, text="Pham Cong Tuan ITITIU19060")
+        author.pack()
 
         self.left_frame = tk.Frame(self.container)
         self.left_frame.pack(side=tk.LEFT, fill=tk.Y)

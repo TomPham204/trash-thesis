@@ -136,5 +136,9 @@ class TrashModel:
             except TypeError as error:
                 print("Type error: ", error)
                 continue
+            
+            except RuntimeError as error:
+                print("Runtime error: ", error)
+                continue
 
         return classes
