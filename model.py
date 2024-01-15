@@ -33,7 +33,7 @@ class TrashModel:
             image_np = np.array(pil_image)
             result = self.detector_model(image_np)[0]
             num_of_objects = len(result.boxes)
-            print("\nObjects: ", num_of_objects)
+            print("\nNum of objects detected: ", num_of_objects)
 
             if num_of_objects > 0:
                 for i in range(0, num_of_objects):
@@ -136,7 +136,7 @@ class TrashModel:
             except TypeError as error:
                 print("Type error: ", error)
                 continue
-            
+
             except RuntimeError as error:
                 print("Runtime error: ", error)
                 continue

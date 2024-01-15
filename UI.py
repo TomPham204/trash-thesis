@@ -38,16 +38,28 @@ class TrashUI:
         self.right_frame = tk.Frame(self.container)
         self.right_frame.pack(side=tk.RIGHT, fill=tk.Y)
 
+        h1 = tk.Label(self.left_frame, text="Input preview")
+        h1.pack()
+
         self.top_left_frame = tk.Frame(self.left_frame, width=300, height=300)
+        self.top_left_frame.pack(padx=10, pady=10)
+
+        h2 = tk.Label(self.left_frame, text="Segmented objects")
+        h2.pack()
+
         self.bottom_left_frame = tk.Frame(self.left_frame, width=300, height=300)
+        self.bottom_left_frame.pack(padx=10, pady=10)
+
+        h3 = tk.Label(self.right_frame, text="Select source")
+        h3.pack()
 
         self.top_right_frame = tk.Frame(self.right_frame, width=300, height=100)
-        self.bottom_right_frame = tk.Frame(self.right_frame, width=300, height=500)
-
-        # camera preview is updated constantly, while segmented objects and classes are updated every 5 seconds
-        self.top_left_frame.pack(padx=10, pady=10)
-        self.bottom_left_frame.pack(padx=10, pady=10)
         self.top_right_frame.pack(padx=10, pady=10)
+
+        h4 = tk.Label(self.right_frame, text="Class list")
+        h4.pack()
+
+        self.bottom_right_frame = tk.Frame(self.right_frame, width=300, height=500)
         self.bottom_right_frame.pack(padx=10, pady=10)
 
         # radio button to choose source

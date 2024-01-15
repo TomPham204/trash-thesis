@@ -17,7 +17,7 @@ def process_camera_frame(root, trash_model, video):
         trash_ui.update_classes_list_preview(classes)
 
         if source == "live_feed":
-            threading.Event().wait(2)
+            threading.Event().wait(1.5)
         else:
             threading.Event().wait(0.2)
 
