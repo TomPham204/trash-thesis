@@ -4,6 +4,7 @@ import os
 from ultralytics import YOLO
 from keras.models import load_model
 from PIL import Image
+from scipy.stats import entropy
 
 
 class TrashModel:
@@ -81,53 +82,82 @@ class TrashModel:
                 predictions = self.predictor_model.predict(
                     np.expand_dims(cropped_obj, axis=0)
                 )
-
                 predictions = list(predictions.tolist())[0]
-                # print(predictions)
+                entropy_main = self.shannon_entropy(predictions)
 
                 # Check if the prediction is confident enough
                 tmp1 = sorted(predictions)
                 first_max = tmp1[-1]
                 second_max = tmp1[-2]
 
-                if first_max - second_max < 0.1 * second_max:  # 8%
-                    print("Using support model, ", tmp1)
-                    predictions_sp = self.support_model.predict(
-                        np.expand_dims(cropped_obj, axis=0)
-                    )
-                    predictions_sp = list(predictions_sp.tolist())[0]
-
-                    R1 = max(predictions) // min(predictions)
-                    R2 = max(predictions_sp) // min(predictions_sp)
-
-                    # [c, f, g, m, p] = predictions_sp
-                    # reordered_predictions_sp = [c, p, f, g, m]
-                    reordered_predictions_sp = predictions_sp
-
-                    weighted_predictions = []
-
-                    for i in range(5):
-                        weighted_predictions.append(
-                            (R1 * 100 // (R1 + R2)) * predictions[i]
-                            + (R2 * 100 // (R1 + R2)) * reordered_predictions_sp[i]
-                        )
-
-                    print("Main predictions: ", predictions)
-                    print("Support predictions: ", reordered_predictions_sp)
-                    print("Weighted predictions: ", weighted_predictions)
-
-                    # Map predictions to class labels
-                    predicted_class_index = np.argmax(weighted_predictions)
+                if (first_max - second_max >= 0.3) or (
+                    first_max - second_max > 0.15 and entropy_main <= 0.6
+                ):
+                    predicted_class_index = np.argmax(predictions)
                     predicted_class_label = self.mn_class_indices[predicted_class_index]
                     obj["class"] = predicted_class_label
                     classes.append(predicted_class_label)
 
                 else:
-                    # Map predictions to class labels
-                    predicted_class_index = np.argmax(predictions)
-                    predicted_class_label = self.mn_class_indices[predicted_class_index]
-                    obj["class"] = predicted_class_label
-                    classes.append(predicted_class_label)
+                    print("Using support model")
+
+                    predictions_sp = self.support_model.predict(
+                        np.expand_dims(cropped_obj, axis=0)
+                    )
+                    predictions_sp = list(predictions_sp.tolist())[0]
+
+                    tmp2 = sorted(predictions_sp)
+                    first_max_sp = tmp2[-1]
+                    second_max_sp = tmp2[-2]
+                    entropy_support = self.shannon_entropy(predictions_sp)
+
+                    print("Entropy main - support: ", entropy_main, entropy_support)
+
+                    if (
+                        (
+                            entropy_main - entropy_support >= 0.2
+                            and entropy_support < 0.6
+                        )
+                        or (first_max_sp - second_max_sp >= 0.3)
+                        or (
+                            first_max_sp - second_max_sp > 0.15
+                            and entropy_support <= 0.6
+                        )
+                    ):
+                        predicted_class_index = np.argmax(predictions_sp)
+                        predicted_class_label = self.sp_class_indices[
+                            predicted_class_index
+                        ]
+                        obj["class"] = predicted_class_label
+                        classes.append(predicted_class_label)
+                        
+                    else:
+                        diff_top_main = first_max - second_max
+                        diff_top_support = first_max_sp - second_max_sp
+
+                        weight_main = (1 - entropy_main) * diff_top_main
+                        weight_support = (1 - entropy_support) * diff_top_support
+
+                        print("Weight main - support: ", weight_main, weight_support)
+
+                        weighted_predictions = []
+                        for i in range(5):
+                            weighted_predictions.append(
+                                weight_main
+                                * predictions[i]
+                                * (1 - self.shannon_entropy(predictions))
+                                + weight_support
+                                * predictions_sp[i]
+                                * (1 - self.shannon_entropy(predictions_sp))
+                            )
+                        print("Weighted predictions: ", weighted_predictions)
+
+                        predicted_class_index = np.argmax(weighted_predictions)
+                        predicted_class_label = self.mn_class_indices[
+                            predicted_class_index
+                        ]
+                        obj["class"] = predicted_class_label
+                        classes.append(predicted_class_label)
 
             except ValueError as error:
                 print("Value error: ", error)
@@ -142,3 +172,9 @@ class TrashModel:
                 continue
 
         return classes
+
+    def shannon_entropy(self, predictions):
+        probabilities = np.asarray(predictions)
+        probabilities = probabilities / np.sum(probabilities)
+        entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))
+        return entropy
