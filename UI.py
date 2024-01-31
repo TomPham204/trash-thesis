@@ -50,6 +50,16 @@ class TrashUI:
         self.bottom_left_frame = tk.Frame(self.left_frame, width=300, height=300)
         self.bottom_left_frame.pack(padx=10, pady=10)
 
+        self.enhanceButtonStatus = tk.IntVar()
+        useEnhancedDetection = tk.Checkbutton(
+            self.right_frame,
+            text="Enhance detection",
+            variable=self.enhanceButtonStatus,
+            onvalue=1,
+            offvalue=0,
+        )
+        useEnhancedDetection.pack()
+
         h3 = tk.Label(self.right_frame, text="Select source")
         h3.pack()
 
@@ -96,6 +106,9 @@ class TrashUI:
         else:
             return self.file_path
 
+    def getEnhancedDetectionStatus(self):
+        return self.enhanceButtonStatus.get() == 1
+
     def stopUI(self):
         self.app_closing = False
         cv2.destroyAllWindows()
@@ -117,7 +130,7 @@ class TrashUI:
             self.file_path = file_path
 
             img = Image.open(file_path)
-            img.thumbnail((300, 300))
+            img.thumbnail((350, 350))
             img = ImageTk.PhotoImage(image=img)
 
             self.top_left_frame.label = tk.Label(self.top_left_frame, image=img)
@@ -131,7 +144,7 @@ class TrashUI:
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
-            img.thumbnail((300, 300))
+            img.thumbnail((350, 350))
             img = ImageTk.PhotoImage(image=img)
 
             if not hasattr(self.top_left_frame, "label"):
@@ -151,6 +164,7 @@ class TrashUI:
             return
 
         max_columns = 5
+
         for idx, obj in enumerate(list_of_objects):
             obj_img = obj["image"]
             obj_img = cv2.resize(obj_img, (60, 60))
@@ -159,9 +173,14 @@ class TrashUI:
             label = tk.Label(self.bottom_left_frame, image=img)
             label.img = img
 
+            predicted_class = obj["class"]
+            class_label = tk.Label(self.bottom_left_frame, text=predicted_class)
+
             row = idx // max_columns
             column = idx % max_columns
-            label.grid(row=row, column=column)
+
+            label.grid(row=row * 2, column=column)
+            class_label.grid(row=row * 2 + 1, column=column)
 
     def update_classes_list_preview(self, list_of_classes):
         for widget in self.bottom_right_frame.winfo_children():

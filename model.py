@@ -4,7 +4,6 @@ import os
 from ultralytics import YOLO
 from keras.models import load_model
 from PIL import Image
-from scipy.stats import entropy
 
 
 class TrashModel:
@@ -15,12 +14,67 @@ class TrashModel:
         self.sp_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
         self.mn_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
 
-        self.detector_model = YOLO("yolov8m-seg.pt")
+        self.detector_model = YOLO("yolov8l-seg.pt")
 
         self.predictor_model = load_model("main.h5", compile=False)
         self.support_model = load_model("support.h5", compile=False)
 
-    def segment_objects(self, source):
+    def get_color_areas(self, sub_image, tolerate=20, diff=30):
+        # gray_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2GRAY)
+        # print("Finished converting to gray")
+
+        # image_entropy = self.image_entropy(gray_image)
+
+        image_entropy = self.calculate_entropy_rgb(sub_image)
+        print("Image entropy: ", image_entropy)
+
+        if image_entropy < 6:
+            return False
+        else:
+            return True
+
+        # max_val = np.max(gray_image)
+        # min_val = np.min(gray_image)
+
+        # if max_val - min_val < diff:
+        #     return False
+
+        # area_max = 0
+        # area_min = 0
+
+        # for i in range(gray_image.shape[0]):
+        #     for j in range(gray_image.shape[1]):
+        #         if gray_image[i, j] > max_val - tolerate:
+        #             area_max += 1
+        #         if gray_image[i, j] < min_val + tolerate:
+        #             area_min += 1
+
+        # print('Finished calculating areas')
+
+        # if (
+        #     max_val - min_val > diff
+        #     and abs(area_max - area_min) / ((area_max + area_min) / 2) < 0.8
+        # ):
+        #     return True
+        # else:
+        #     return False
+
+    def enhance_detection(self, image_np):
+        height, width, _ = image_np.shape
+        sub_height, sub_width = height // 3, width // 3
+        tmp_segment=[]
+
+        for i in range(3):
+            for j in range(3):
+                sub_image = image_np[
+                    i * sub_height : (i + 1) * sub_height,
+                    j * sub_width : (j + 1) * sub_width,
+                ]
+                if self.get_color_areas(sub_image, 20, 30):
+                    tmp_segment.append({"image": sub_image, "class": ""})
+        return tmp_segment
+
+    def segment_objects(self, source, isEnhanced):
         segmented_objects = []
         pil_image = None
 
@@ -55,20 +109,21 @@ class TrashModel:
                     else:
                         cropped_obj = image_np[x1:x2, y1:y2]
                     segmented_objects.append({"image": cropped_obj, "class": ""})
+                
+                if isEnhanced:
+                    tmp_segment=self.enhance_detection(image_np)
+                    segmented_objects.extend(tmp_segment)
+
             else:
-                print("No objects detected")
-                segmented_objects.append({"image": image_np, "class": ""})
-        except AttributeError as error:
-            print("AttributeError", error)
-            pass
-        except ValueError as error:
-            print("ValueError", error)
-            pass
-        except TypeError as error:
-            print("TypeError", error)
-            pass
-        except IndexError as error:
-            print("IndexError", error)
+                # YOLO failed to detect any objects, switch to enhanced detection
+                tmp_segment=self.enhance_detection(image_np)
+                segmented_objects.extend(tmp_segment)
+
+                if len(segmented_objects) == 0:
+                    segmented_objects.append({"image": image_np, "class": ""})
+
+        except Exception as error:
+            print("Error: ", error)
             pass
 
         return segmented_objects
@@ -130,7 +185,7 @@ class TrashModel:
                         ]
                         obj["class"] = predicted_class_label
                         classes.append(predicted_class_label)
-                        
+
                     else:
                         diff_top_main = first_max - second_max
                         diff_top_support = first_max_sp - second_max_sp
@@ -159,16 +214,8 @@ class TrashModel:
                         obj["class"] = predicted_class_label
                         classes.append(predicted_class_label)
 
-            except ValueError as error:
-                print("Value error: ", error)
-                continue
-
-            except TypeError as error:
-                print("Type error: ", error)
-                continue
-
-            except RuntimeError as error:
-                print("Runtime error: ", error)
+            except Exception as error:
+                print("Error: ", error)
                 continue
 
         return classes
@@ -177,4 +224,30 @@ class TrashModel:
         probabilities = np.asarray(predictions)
         probabilities = probabilities / np.sum(probabilities)
         entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))
+        return entropy
+
+    def image_entropy(self, image):
+        # Calculate the histogram of the image
+        histogram = np.histogram(image, bins=256)[0]
+
+        # Normalize the histogram
+        histogram = list(filter(lambda p: p > 0, histogram / np.sum(histogram)))
+
+        # Calculate the entropy
+        entropy = -np.sum(np.multiply(histogram, np.log2(histogram)))
+
+        return entropy
+
+    def calculate_entropy_rgb(self, image):
+        # Split the image into its color channels
+        r, g, b = cv2.split(image)
+
+        # Calculate the entropy for each color channel
+        entropy_r = self.image_entropy(r)
+        entropy_g = self.image_entropy(g)
+        entropy_b = self.image_entropy(b)
+
+        # Combine the entropies in some way (here we take the average)
+        entropy = (entropy_r + entropy_g + entropy_b) / 3
+
         return entropy
