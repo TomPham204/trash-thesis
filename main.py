@@ -31,6 +31,7 @@ def attempt_to_get_video():
 
     try:
         video = cv2.VideoCapture(0)
+        
     except Exception as e:
         print("Error: ", e)
         attempt_to_get_video()
