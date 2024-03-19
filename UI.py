@@ -38,11 +38,11 @@ class TrashUI:
         author = tk.Label(self.top_frame, text="Pham Cong Tuan ITITIU19060")
         author.pack()
 
-        self.left_frame = tk.Frame(self.container)
-        self.left_frame.pack(side=tk.LEFT, fill=tk.Y)
+        self.left_frame = tk.Frame(self.top_frame)
+        self.left_frame.pack(side=tk.LEFT, fill=tk.Y, expand=True)
 
-        self.right_frame = tk.Frame(self.container)
-        self.right_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        self.right_frame = tk.Frame(self.top_frame)
+        self.right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
 
         h1 = tk.Label(self.left_frame, text="Input preview")
         h1.pack()
@@ -53,10 +53,10 @@ class TrashUI:
         h2 = tk.Label(self.left_frame, text="Segmented objects")
         h2.pack()
 
-        self.bottom_left_frame = tk.Frame(self.left_frame, width=300, height=300)
-        self.bottom_left_frame.pack(padx=10, pady=10)
+        self.bottom_frame = tk.Frame(self.container)
+        self.bottom_frame.pack(padx=10, pady=10, fill=tk.BOTH)
 
-        self.enhanceButtonStatus = tk.IntVar(value=1)
+        self.enhanceButtonStatus = tk.IntVar(value=0)
         useEnhancedDetection = tk.Checkbutton(
             self.right_frame,
             text="Enhance detection",
@@ -64,19 +64,13 @@ class TrashUI:
             onvalue=1,
             offvalue=0,
         )
-        useEnhancedDetection.pack()
+        useEnhancedDetection.pack(pady=10)
 
         h3 = tk.Label(self.right_frame, text="Select source")
         h3.pack()
 
-        self.top_right_frame = tk.Frame(self.right_frame, width=300, height=100)
-        self.top_right_frame.pack(padx=10, pady=10)
-
-        h4 = tk.Label(self.right_frame, text="Class list")
-        h4.pack()
-
-        self.bottom_right_frame = tk.Frame(self.right_frame, width=300, height=500)
-        self.bottom_right_frame.pack(padx=10, pady=10)
+        self.top_right_frame = tk.Frame(self.right_frame)
+        self.top_right_frame.pack()
 
         # radio button to choose source
         self.source_var = tk.StringVar()
@@ -158,24 +152,24 @@ class TrashUI:
                 self.top_left_frame.label.after(50, self.update_camera_preview)
 
     def update_segmented_objects_preview(self, list_of_objects):
-        for widget in self.bottom_left_frame.winfo_children():
+        for widget in self.bottom_frame.winfo_children():
             widget.destroy()
 
         if len(list_of_objects) == 0:
             return
 
-        max_columns = 5
+        max_columns = 8
 
         for idx, obj in enumerate(list_of_objects):
             obj_img = obj["image"]
             obj_img = cv2.resize(obj_img, (60, 60))
             img = Image.fromarray(cv2.cvtColor(obj_img, cv2.COLOR_BGR2RGB))
             img = ImageTk.PhotoImage(image=img)
-            label = tk.Label(self.bottom_left_frame, image=img)
+            label = tk.Label(self.bottom_frame, image=img)
             label.img = img
 
             predicted_class = obj["class"]
-            class_label = tk.Label(self.bottom_left_frame, text=predicted_class)
+            class_label = tk.Label(self.bottom_frame, text=predicted_class)
 
             row = idx // max_columns
             column = idx % max_columns
@@ -184,9 +178,4 @@ class TrashUI:
             class_label.grid(row=row * 2 + 1, column=column)
 
     def update_classes_list_preview(self, list_of_classes):
-        for widget in self.bottom_right_frame.winfo_children():
-            widget.destroy()
-
-        for idx, obj_class in enumerate(list(set(list_of_classes))):
-            label = tk.Label(self.bottom_right_frame, text=obj_class)
-            label.grid(row=idx, column=0)
+        pass

@@ -12,7 +12,7 @@ class TrashApp:
         self.trash_ui = None
         self.trash_model = None
         self.root = tk.Tk()
-        self.root.minsize(640, 480)
+        # self.root.minsize(640, 480)
         self.root.maxsize(1280, 720)
 
     def process_input(self):
