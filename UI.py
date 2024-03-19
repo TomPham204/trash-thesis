@@ -7,6 +7,12 @@ import cv2
 class TrashUI:
     _instance = None
 
+    @classmethod
+    def getInstance(cls, root, video):
+        if not cls._instance:
+            cls._instance = TrashUI(root, video)
+        return cls._instance
+
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls)
@@ -14,7 +20,7 @@ class TrashUI:
 
     def __init__(self, root, video):
         self.root = root
-        self.root.title("Trash Classification Demo by Cong Tuan")
+        self.root.title("Trash Demo by Cong Tuan")
         self.root.configure(background="black")
         self.app_closing = False
         self.video = video
@@ -50,7 +56,7 @@ class TrashUI:
         self.bottom_left_frame = tk.Frame(self.left_frame, width=300, height=300)
         self.bottom_left_frame.pack(padx=10, pady=10)
 
-        self.enhanceButtonStatus = tk.IntVar()
+        self.enhanceButtonStatus = tk.IntVar(value=1)
         useEnhancedDetection = tk.Checkbutton(
             self.right_frame,
             text="Enhance detection",
@@ -94,12 +100,6 @@ class TrashUI:
         )
         use_image_radio.pack(anchor=tk.W)
 
-    @classmethod
-    def getInstance(cls, root, video):
-        if not cls._instance:
-            cls._instance = TrashUI(root, video)
-        return cls._instance
-
     def getCurrentSource(self):
         if self.source_var.get() == "live_feed":
             return "live_feed"
@@ -141,6 +141,7 @@ class TrashUI:
     def update_camera_preview(self):
         self.source_var.set("live_feed")
         ret, frame = self.video.read()
+
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
@@ -154,7 +155,7 @@ class TrashUI:
             self.top_left_frame.label.pack()
 
             if not self.app_closing:
-                self.top_left_frame.label.after(40, self.update_camera_preview)
+                self.top_left_frame.label.after(50, self.update_camera_preview)
 
     def update_segmented_objects_preview(self, list_of_objects):
         for widget in self.bottom_left_frame.winfo_children():

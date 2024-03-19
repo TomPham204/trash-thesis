@@ -3,70 +3,72 @@ import cv2
 from UI import TrashUI
 from model import TrashModel
 import threading
-
-video = None
-
-
-def process_input(root, trash_model, video):
-    while True:
-        trash_ui = TrashUI.getInstance(root, video)
-        source = trash_ui.getCurrentSource()
-        isEnhanced= trash_ui.getEnhancedDetectionStatus()
-
-        segmented_objects = trash_model.segment_objects(source, isEnhanced)
-
-        classes = trash_model.predict_classes(segmented_objects)
-        
-        trash_ui.update_segmented_objects_preview(segmented_objects)
-        trash_ui.update_classes_list_preview(classes)
-
-        if source == "live_feed":
-            threading.Event().wait(1.5)
-        else:
-            threading.Event().wait(0.2)
+import time
 
 
-def attempt_to_get_video():
-    global video
+class TrashApp:
+    def __init__(self):
+        self.video = None
+        self.trash_ui = None
+        self.trash_model = None
+        self.root = tk.Tk()
+        self.root.minsize(640, 480)
+        self.root.maxsize(1280, 720)
 
-    try:
-        video = cv2.VideoCapture(0)
-        
-    except Exception as e:
-        print("Error: ", e)
-        attempt_to_get_video()
+    def process_input(self):
+        while True:
+            source = self.trash_ui.getCurrentSource()
+            isEnhanced = self.trash_ui.getEnhancedDetectionStatus()
 
+            segmented_objects = self.trash_model.segment_objects(source, isEnhanced)
 
-def main():
-    global video
+            classes = self.trash_model.predict_classes(segmented_objects)
 
-    root = tk.Tk()
-    root.minsize(640, 480)
-    root.maxsize(1280, 720)
+            self.trash_ui.update_segmented_objects_preview(segmented_objects)
+            self.trash_ui.update_classes_list_preview(classes)
 
-    attempt_to_get_video()
+            if source == "live_feed":
+                time.sleep(1.5)
+            else:
+                time.sleep(0.5)
 
-    trash_ui = TrashUI.getInstance(root, video)
-    trash_model = TrashModel(video)
+    def get_video(self):
+        if self.video is None:
+            try:
+                self.video = cv2.VideoCapture(1)
+                # self.video = cv2.VideoCapture(0)
+            except Exception as e:
+                print("Error: ", e)
+                self.get_video()
 
-    ui_thread = threading.Thread(target=trash_ui.update_source_preview, daemon=True)
-    ui_thread.start()
+    def run(self):
+        self.get_video()
 
-    process_frame_thread = threading.Thread(
-        target=process_input,
-        args=(root, trash_model, video),
-        daemon=True,
-    )
-    process_frame_thread.start()
+        self.trash_ui = TrashUI.getInstance(self.root, self.video)
+        self.trash_model = TrashModel(self.video)
 
-    try:
-        root.mainloop()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        trash_ui.stopUI()
-        video.release()
+        ui_thread = threading.Thread(
+            target=self.trash_ui.update_source_preview, daemon=True
+        )
+        ui_thread.start()
+
+        process_frame_thread = threading.Thread(
+            target=self.process_input,
+            daemon=True,
+        )
+        process_frame_thread.start()
+
+        try:
+            self.root.mainloop()
+            pass
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.trash_ui.stopUI()
+            self.video.release()
 
 
 if __name__ == "__main__":
-    main()
+
+    app = TrashApp()
+    app.run()

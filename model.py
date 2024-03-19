@@ -14,63 +14,31 @@ class TrashModel:
         self.sp_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
         self.mn_class_indices = ["cardboard", "fabric", "glass", "metal", "paper"]
 
-        self.detector_model = YOLO("yolov8l-seg.pt")
+        self.detector_model = YOLO("yolov8m.pt")
 
         self.predictor_model = load_model("main.h5", compile=False)
         self.support_model = load_model("support.h5", compile=False)
 
-    def get_color_areas(self, sub_image, tolerate=20, diff=30):
-        # gray_image = cv2.cvtColor(sub_image, cv2.COLOR_BGR2GRAY)
-        # print("Finished converting to gray")
-
-        # image_entropy = self.image_entropy(gray_image)
-
+    def check_image_areas(self, sub_image):
         image_entropy = self.calculate_entropy_rgb(sub_image)
-        print("Image entropy: ", image_entropy)
 
         if image_entropy < 6:
             return False
         else:
             return True
 
-        # max_val = np.max(gray_image)
-        # min_val = np.min(gray_image)
-
-        # if max_val - min_val < diff:
-        #     return False
-
-        # area_max = 0
-        # area_min = 0
-
-        # for i in range(gray_image.shape[0]):
-        #     for j in range(gray_image.shape[1]):
-        #         if gray_image[i, j] > max_val - tolerate:
-        #             area_max += 1
-        #         if gray_image[i, j] < min_val + tolerate:
-        #             area_min += 1
-
-        # print('Finished calculating areas')
-
-        # if (
-        #     max_val - min_val > diff
-        #     and abs(area_max - area_min) / ((area_max + area_min) / 2) < 0.8
-        # ):
-        #     return True
-        # else:
-        #     return False
-
-    def enhance_detection(self, image_np):
+    def enhance_detection(self, image_np, sub_amount=4):
         height, width, _ = image_np.shape
-        sub_height, sub_width = height // 3, width // 3
-        tmp_segment=[]
+        sub_height, sub_width = height // sub_amount, width // sub_amount
+        tmp_segment = []
 
-        for i in range(3):
-            for j in range(3):
+        for i in range(sub_amount):
+            for j in range(sub_amount):
                 sub_image = image_np[
                     i * sub_height : (i + 1) * sub_height,
                     j * sub_width : (j + 1) * sub_width,
                 ]
-                if self.get_color_areas(sub_image, 20, 30):
+                if self.check_image_areas(sub_image):
                     tmp_segment.append({"image": sub_image, "class": ""})
         return tmp_segment
 
@@ -80,15 +48,19 @@ class TrashModel:
 
         if source == "live_feed":
             ret, frame = self.video.read()
+
+            if frame is None or ret is False:
+                print("Frame is None")
+                return segmented_objects
+
             pil_image = Image.fromarray(frame)
         else:
             pil_image = Image.open(source)
 
         try:
             image_np = np.array(pil_image)
-            result = self.detector_model(image_np)[0]
+            result = self.detector_model(image_np, conf=0.05, iou=0.05, augment=True)[0]
             num_of_objects = len(result.boxes)
-            print("\nNum of objects detected: ", num_of_objects)
 
             if num_of_objects > 0:
                 for i in range(0, num_of_objects):
@@ -99,24 +71,28 @@ class TrashModel:
                     x2 = result.boxes.xyxy[i][2]
                     y2 = result.boxes.xyxy[i][3]
 
-                    x1 = int(np.array(x1))
-                    y1 = int(np.array(y1))
-                    x2 = int(np.array(x2))
-                    y2 = int(np.array(y2))
+                    w = x2 - x1
+                    h = y2 - y1
+
+                    x1 = int(x1 + w * 0.05)
+                    y1 = int(y1 + h * 0.05)
+                    x2 = int(x2 - w * 0.05)
+                    y2 = int(y2 - h * 0.05)
 
                     if image_np.shape[2] == 3:
                         cropped_obj = image_np[y1:y2, x1:x2]
                     else:
                         cropped_obj = image_np[x1:x2, y1:y2]
+
                     segmented_objects.append({"image": cropped_obj, "class": ""})
-                
+
                 if isEnhanced:
-                    tmp_segment=self.enhance_detection(image_np)
+                    tmp_segment = self.enhance_detection(image_np)
                     segmented_objects.extend(tmp_segment)
 
             else:
                 # YOLO failed to detect any objects, switch to enhanced detection
-                tmp_segment=self.enhance_detection(image_np)
+                tmp_segment = self.enhance_detection(image_np)
                 segmented_objects.extend(tmp_segment)
 
                 if len(segmented_objects) == 0:
